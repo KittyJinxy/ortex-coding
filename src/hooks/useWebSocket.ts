@@ -117,7 +117,7 @@ export function useWebSocket() {
                 break; // Only process first valid message
               }
             }
-          } catch (error) {
+          } catch {
             // Silently ignore parsing errors for non-data messages
             // The WebSocket may send keepalive or other non-JSON messages
           }
@@ -164,7 +164,7 @@ export function useWebSocket() {
         };
 
         wsRef.current = ws;
-      } catch (error) {
+      } catch {
         if (!isMounted) return;
 
         reconnectAttempts++;
