@@ -1,3 +1,5 @@
+import { useState } from "react";
+import type { FormEvent } from "react";
 import {
   Card,
   CardContent,
@@ -7,9 +9,86 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, Lock, TrendingUp } from "lucide-react";
+import { User, Lock, TrendingUp, AlertCircle } from "lucide-react";
+
+interface FormErrors {
+  username?: string;
+  password?: string;
+  submit?: string;
+}
 
 export function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!username.trim()) {
+      newErrors.username = "Username is required";
+    } else if (username.trim().length < 3) {
+      newErrors.username = "Username must be at least 3 characters";
+    }
+
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setErrors({
+          submit:
+            errorData.message || "Login failed. Please check your credentials.",
+        });
+        return;
+      }
+
+      // Success - in a real app, you would handle the response here
+      const data = await response.json();
+      console.log("Login successful:", data);
+      // You could redirect or update app state here
+    } catch (error) {
+      setErrors({
+        submit:
+          error instanceof Error
+            ? error.message
+            : "An error occurred. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
@@ -55,7 +134,7 @@ export function LoginPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label
                   htmlFor="username"
@@ -69,10 +148,27 @@ export function LoginPage() {
                     id="username"
                     type="text"
                     placeholder="Enter your username"
-                    className="w-full pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-[#38ada8] focus:ring-[#38ada8]"
-                    required
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      if (errors.username) {
+                        setErrors({ ...errors, username: undefined });
+                      }
+                    }}
+                    className={`w-full pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-[#38ada8] focus:ring-[#38ada8] ${
+                      errors.username
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : ""
+                    }`}
+                    disabled={isLoading}
                   />
                 </div>
+                {errors.username && (
+                  <div className="flex items-center gap-1 text-sm text-red-400">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{errors.username}</span>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <label
@@ -87,29 +183,54 @@ export function LoginPage() {
                     id="password"
                     type="password"
                     placeholder="Enter your password"
-                    className="w-full pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-[#38ada8] focus:ring-[#38ada8]"
-                    required
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errors.password) {
+                        setErrors({ ...errors, password: undefined });
+                      }
+                    }}
+                    className={`w-full pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-[#38ada8] focus:ring-[#38ada8] ${
+                      errors.password
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : ""
+                    }`}
+                    disabled={isLoading}
                   />
                 </div>
+                {errors.password && (
+                  <div className="flex items-center gap-1 text-sm text-red-400">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{errors.password}</span>
+                  </div>
+                )}
               </div>
+              {errors.submit && (
+                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <span className="text-sm text-red-400">{errors.submit}</span>
+                </div>
+              )}
               <div className="flex items-center justify-end pt-2">
                 <button
                   type="button"
-                  className="text-sm text-[#38ada8] hover:text-[#2d8a85] transition-colors font-semibold"
+                  className="text-sm text-[#38ada8] hover:text-[#2d8a85] transition-colors font-semibold disabled:opacity-50"
                   onClick={() => {
                     // Will be connected to modal in step 7
                     console.log("Reset password clicked");
                   }}
+                  disabled={isLoading}
                 >
                   Forgot password?
                 </button>
               </div>
               <Button
-                className="w-full bg-[#38ada8] hover:bg-[#2d8a85] text-white font-semibold shadow-lg h-12 text-base"
+                className="w-full bg-[#38ada8] hover:bg-[#2d8a85] text-white font-semibold shadow-lg h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 type="submit"
                 size="lg"
+                disabled={isLoading}
               >
-                Login
+                {isLoading ? "Logging in..." : "Login"}
               </Button>
             </form>
           </CardContent>
