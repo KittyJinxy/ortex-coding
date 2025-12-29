@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import {
   Card,
@@ -48,7 +48,38 @@ export function LoginPage() {
   const [resetErrors, setResetErrors] = useState<ResetPasswordErrors>({});
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
-  const { price, timestamp, isConnected, error: wsError } = useWebSocket();
+  const {
+    price,
+    timestamp,
+    timestampDate,
+    isConnected,
+    error: wsError,
+  } = useWebSocket();
+
+  const [secondsSinceUpdate, setSecondsSinceUpdate] = useState<number | null>(
+    null
+  );
+
+  // Update seconds counter every second
+  useEffect(() => {
+    if (!timestampDate) {
+      setSecondsSinceUpdate(null);
+      return;
+    }
+
+    const updateSeconds = () => {
+      const now = new Date();
+      const diffSeconds = Math.floor(
+        (now.getTime() - timestampDate.getTime()) / 1000
+      );
+      setSecondsSinceUpdate(diffSeconds);
+    };
+
+    updateSeconds(); // Update immediately
+    const interval = setInterval(updateSeconds, 1000); // Update every second
+
+    return () => clearInterval(interval);
+  }, [timestampDate]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -212,6 +243,11 @@ export function LoginPage() {
                 </div>
                 <p className="text-[10px] sm:text-xs opacity-80 font-medium break-words">
                   Last updated: {timestamp || "--"}
+                  {secondsSinceUpdate !== null && timestamp && (
+                    <span className="ml-1 opacity-70">
+                      ({secondsSinceUpdate}s ago)
+                    </span>
+                  )}
                 </p>
                 {wsError && (
                   <p className="text-[10px] sm:text-xs text-yellow-200 mt-1 break-words">
