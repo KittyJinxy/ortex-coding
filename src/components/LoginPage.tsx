@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { User, Lock, TrendingUp, AlertCircle } from "lucide-react";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface FormErrors {
   username?: string;
@@ -22,6 +23,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const { price, timestamp, isConnected, error: wsError } = useWebSocket();
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -106,17 +108,30 @@ export function LoginPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-medium">Live</span>
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        isConnected
+                          ? "bg-green-400 animate-pulse"
+                          : "bg-yellow-400"
+                      }`}
+                    ></div>
+                    <span className="text-xs font-medium">
+                      {isConnected ? "Live" : "Connecting..."}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-5xl font-bold">--</span>
+                  <span className="text-5xl font-bold">
+                    {price !== null ? price.toFixed(4) : "--"}
+                  </span>
                   <span className="text-lg opacity-90">USD</span>
                 </div>
                 <p className="text-xs opacity-80 font-medium">
-                  Last updated: --
+                  Last updated: {timestamp || "--"}
                 </p>
+                {wsError && (
+                  <p className="text-xs text-yellow-200 mt-1">{wsError}</p>
+                )}
               </div>
             </div>
 
