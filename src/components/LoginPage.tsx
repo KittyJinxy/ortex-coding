@@ -9,7 +9,22 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, Lock, TrendingUp, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  User,
+  Lock,
+  TrendingUp,
+  AlertCircle,
+  Mail,
+  CheckCircle,
+} from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface FormErrors {
@@ -18,11 +33,21 @@ interface FormErrors {
   submit?: string;
 }
 
+interface ResetPasswordErrors {
+  email?: string;
+  submit?: string;
+}
+
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetErrors, setResetErrors] = useState<ResetPasswordErrors>({});
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const { price, timestamp, isConnected, error: wsError } = useWebSocket();
 
   const validateForm = (): boolean => {
@@ -89,6 +114,63 @@ export function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const validateResetForm = (): boolean => {
+    const newErrors: ResetPasswordErrors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!resetEmail.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(resetEmail.trim())) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    setResetErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleResetSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setResetErrors({});
+    setResetSuccess(false);
+
+    if (!validateResetForm()) {
+      return;
+    }
+
+    setIsResetLoading(true);
+
+    try {
+      // In a real app, this would call your reset password endpoint
+      // For now, we'll simulate a successful response
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      setResetSuccess(true);
+      setResetEmail("");
+
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setIsResetModalOpen(false);
+        setResetSuccess(false);
+      }, 2000);
+    } catch (error) {
+      setResetErrors({
+        submit:
+          error instanceof Error
+            ? error.message
+            : "An error occurred. Please try again.",
+      });
+    } finally {
+      setIsResetLoading(false);
+    }
+  };
+
+  const handleOpenResetModal = () => {
+    setIsResetModalOpen(true);
+    setResetEmail("");
+    setResetErrors({});
+    setResetSuccess(false);
   };
 
   return (
@@ -230,10 +312,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   className="text-sm text-[#38ada8] hover:text-[#2d8a85] transition-colors font-semibold disabled:opacity-50"
-                  onClick={() => {
-                    // Will be connected to modal in step 7
-                    console.log("Reset password clicked");
-                  }}
+                  onClick={handleOpenResetModal}
                   disabled={isLoading}
                 >
                   Forgot password?
@@ -251,6 +330,101 @@ export function LoginPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Reset Password Modal */}
+      <Dialog open={isResetModalOpen} onOpenChange={setIsResetModalOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Reset Password
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Enter your email address and we'll send you a link to reset your
+              password.
+            </DialogDescription>
+          </DialogHeader>
+          {resetSuccess ? (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-green-400" />
+              </div>
+              <div className="text-center space-y-2">
+                <p className="text-lg font-semibold text-white">
+                  Email sent successfully!
+                </p>
+                <p className="text-sm text-slate-400">
+                  Please check your inbox for password reset instructions.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleResetSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label
+                  htmlFor="reset-email"
+                  className="text-sm font-semibold text-slate-300"
+                >
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="Enter your email address"
+                    value={resetEmail}
+                    onChange={(e) => {
+                      setResetEmail(e.target.value);
+                      if (resetErrors.email) {
+                        setResetErrors({ ...resetErrors, email: undefined });
+                      }
+                    }}
+                    className={`w-full pl-10 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-[#38ada8] focus:ring-[#38ada8] ${
+                      resetErrors.email
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : ""
+                    }`}
+                    disabled={isResetLoading}
+                    autoFocus
+                  />
+                </div>
+                {resetErrors.email && (
+                  <div className="flex items-center gap-1 text-sm text-red-400">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{resetErrors.email}</span>
+                  </div>
+                )}
+              </div>
+              {resetErrors.submit && (
+                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <span className="text-sm text-red-400">
+                    {resetErrors.submit}
+                  </span>
+                </div>
+              )}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsResetModalOpen(false)}
+                  disabled={isResetLoading}
+                  className="border-slate-600 text-slate-700 bg-slate-300 hover:bg-slate-700 hover:text-slate-300"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isResetLoading}
+                  className="bg-[#38ada8] hover:bg-[#2d8a85] text-white"
+                >
+                  {isResetLoading ? "Sending..." : "Send Reset Link"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
